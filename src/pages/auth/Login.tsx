@@ -1,52 +1,29 @@
-import { useState } from 'react';
-import { useNavigate, Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
+import { ErrorMessage, Field, Form, Formik } from 'formik';
 import { AxiosInstance } from '../../config/api/axios';
 import { API_CONFIG } from '../../config/api';
+import { loginInitialValues, loginValidationSchema } from './formik';
 
 const Login = () => {
     const navigate = useNavigate();
 
-    const [formData, setFormData] = useState({
-        email: '',
-        password: '',
-    });
-
-    const [loading, setLoading] = useState(false);
-    const [error, setError] = useState('');
-
-    const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-        setFormData({
-            ...formData,
-            [e.target.name]: e.target.value,
-        });
-    };
-
-    const handleSubmit = async (e: React.FormEvent) => {
-        e.preventDefault();
-
+    const handleSubmit = async (
+        values: typeof loginInitialValues,
+        { setSubmitting, setStatus }: any
+    ) => {
         try {
-            setLoading(true);
-            setError('');
+            setStatus('');
 
-            const response = await AxiosInstance.post(
-                API_CONFIG.auth.login,
-                formData
-            );
+            const response = await AxiosInstance.post(API_CONFIG.AUTH.LOGIN, values);
 
             localStorage.setItem('token', response.data.data.token);
-            localStorage.setItem(
-                'user',
-                JSON.stringify(response.data.data.user)
-            );
+            localStorage.setItem('user', JSON.stringify(response.data.data.user));
 
             navigate('/dashboard');
         } catch (error: any) {
-            setError(
-                error?.response?.data?.message ||
-                'Login failed. Please try again.'
-            );
+            setStatus(error?.response?.data?.message || 'Login failed. Please try again.');
         } finally {
-            setLoading(false);
+            setSubmitting(false);
         }
     };
 
@@ -56,7 +33,7 @@ const Login = () => {
                 <div className="col-md-5 col-lg-4">
                     <div className="card shadow border-0 rounded-4">
                         <div className="card-body p-5">
-                            <h2 className="text-center fw-bold mb-4">
+                            <h2 className="text-center fw-bold mb-2">
                                 Student Project Management
                             </h2>
 
@@ -64,53 +41,63 @@ const Login = () => {
                                 Login to your account
                             </p>
 
-                            {error && (
-                                <div className="alert alert-danger">
-                                    {error}
-                                </div>
-                            )}
+                            <Formik
+                                initialValues={loginInitialValues}
+                                validationSchema={loginValidationSchema}
+                                onSubmit={handleSubmit}
+                            >
+                                {({ isSubmitting, status }) => (
+                                    <Form>
+                                        {status && (
+                                            <div className="alert alert-danger">
+                                                {status}
+                                            </div>
+                                        )}
 
-                            <form onSubmit={handleSubmit}>
-                                <div className="mb-3">
-                                    <label className="form-label">
-                                        Email Address
-                                    </label>
+                                        <div className="mb-3">
+                                            <label className="form-label">
+                                                Email Address
+                                            </label>
 
-                                    <input
-                                        type="email"
-                                        name="email"
-                                        className="form-control"
-                                        placeholder="Enter email"
-                                        value={formData.email}
-                                        onChange={handleChange}
-                                        required
-                                    />
-                                </div>
+                                            <Field
+                                                type="email"
+                                                name="email"
+                                                className="form-control"
+                                                placeholder="Enter your email"
+                                            />
 
-                                <div className="mb-4">
-                                    <label className="form-label">
-                                        Password
-                                    </label>
+                                            <div className="text-danger small mt-1">
+                                                <ErrorMessage name="email" />
+                                            </div>
+                                        </div>
 
-                                    <input
-                                        type="password"
-                                        name="password"
-                                        className="form-control"
-                                        placeholder="Enter password"
-                                        value={formData.password}
-                                        onChange={handleChange}
-                                        required
-                                    />
-                                </div>
+                                        <div className="mb-4">
+                                            <label className="form-label">
+                                                Password
+                                            </label>
 
-                                <button
-                                    type="submit"
-                                    className="btn btn-primary w-100"
-                                    disabled={loading}
-                                >
-                                    {loading ? 'Logging in...' : 'Login'}
-                                </button>
-                            </form>
+                                            <Field
+                                                type="password"
+                                                name="password"
+                                                className="form-control"
+                                                placeholder="Enter your password"
+                                            />
+
+                                            <div className="text-danger small mt-1">
+                                                <ErrorMessage name="password" />
+                                            </div>
+                                        </div>
+
+                                        <button
+                                            type="submit"
+                                            className="btn btn-primary w-100"
+                                            disabled={isSubmitting}
+                                        >
+                                            {isSubmitting ? 'Logging in...' : 'Login'}
+                                        </button>
+                                    </Form>
+                                )}
+                            </Formik>
 
                             <div className="text-center mt-4">
                                 <span className="text-muted">

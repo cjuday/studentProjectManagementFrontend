@@ -1,5 +1,5 @@
 export const API_CONFIG = {
-    baseURL: 'https://api.example.com',
+    baseURL: 'http://localhost:8000/api',
 
     AUTH: {
         REGISTER: '/auth/register',
