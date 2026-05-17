@@ -1,11 +1,39 @@
-import { ErrorMessage, Field, Form, Formik } from 'formik';
+import { useEffect, useState } from 'react';
+import Select from 'react-select';
+import { ErrorMessage, Field, FieldArray, Form, Formik } from 'formik';
 import { useNavigate } from 'react-router-dom';
 import { AxiosInstance } from '../../config/api/axios';
 import { API_CONFIG } from '../../config/api';
 import { projectInitialValues, projectValidationSchema } from './formik';
+import ReactQuill from 'react-quill-new';
+import 'react-quill-new/dist/quill.snow.css'
 
 const ProjectCreate = () => {
     const navigate = useNavigate();
+    const [teachers, setTeachers] = useState<any[]>([]);
+
+    const fetchTeachers = async () => {
+        try {
+            const response = await AxiosInstance.get(
+                API_CONFIG.USERS.TEACHERS
+            );
+
+            const formattedTeachers = response.data.data.map(
+                (teacher: any) => ({
+                    value: teacher.id,
+                    label: `${teacher.name} (${teacher.email})`,
+                })
+            );
+
+            setTeachers(formattedTeachers);
+        } catch (error) {
+            console.error('Failed to fetch teachers:', error);
+        }
+    };
+
+    useEffect(() => {
+        fetchTeachers();
+    }, []);
 
     const handleSubmit = async (
         values: typeof projectInitialValues,
@@ -18,7 +46,9 @@ const ProjectCreate = () => {
 
             formData.append('title', values.title);
             formData.append('description', values.description);
-            formData.append('repository_link', values.repository_link);
+            values.repository_links.forEach((link) => {
+                formData.append('repository_link[]', link);
+            });
 
             if (values.demo_link) {
                 formData.append('demo_link', values.demo_link);
@@ -38,12 +68,21 @@ const ProjectCreate = () => {
                 },
             });
 
-            navigate('/projects');
+            navigate('/projects', {
+                state: {
+                    successMessage: 'Project submitted successfully.',
+                },
+            });
         } catch (error: any) {
             setStatus(
                 error?.response?.data?.message ||
                     'Failed to submit project. Please try again.'
             );
+
+            window.scrollTo({
+                top: 0,
+                behavior: 'smooth',
+            });
         } finally {
             setSubmitting(false);
         }
@@ -62,7 +101,7 @@ const ProjectCreate = () => {
                         validationSchema={projectValidationSchema}
                         onSubmit={handleSubmit}
                     >
-                        {({ isSubmitting, status, setFieldValue }) => (
+                        {({ isSubmitting, status, setFieldValue, values, errors, submitCount }) => (
                             <Form>
                                 {status && (
                                     <div className="alert alert-danger">
@@ -92,12 +131,12 @@ const ProjectCreate = () => {
                                         Description <span className="text-danger">*</span>
                                     </label>
 
-                                    <Field
-                                        as="textarea"
-                                        name="description"
-                                        rows={6}
-                                        className="form-control"
-                                        placeholder="Write project description. HTML is allowed if needed."
+                                    <ReactQuill
+                                        theme="snow"
+                                        value={values.description}
+                                        onChange={(value) => setFieldValue('description', value)}
+                                        placeholder="Write project description"
+                                        style={{ height: '250px', marginBottom: '50px' }}
                                     />
 
                                     <div className="text-danger small mt-1">
@@ -110,16 +149,52 @@ const ProjectCreate = () => {
                                         Repository Link <span className="text-danger">*</span>
                                     </label>
 
-                                    <Field
-                                        type="text"
-                                        name="repository_link"
-                                        className="form-control"
-                                        placeholder="https://github.com/username/project"
-                                    />
+                                    <FieldArray name="repository_links">
+                                    {({ push, remove }) => (
+                                        <>
+                                            {values.repository_links.map(
+                                                (_: string, index: number) => (
+                                                    <div
+                                                        key={index}
+                                                        className="d-flex gap-2 mb-2"
+                                                    >
+                                                        <Field
+                                                            type="text"
+                                                            name={`repository_links.${index}`}
+                                                            className="form-control"
+                                                            placeholder={`https://github.com/username/repo${index + 1}`}
+                                                        />
 
+                                                        {values.repository_links.length > 1 && (
+                                                            <button
+                                                                type="button"
+                                                                className="btn btn-danger"
+                                                                onClick={() => remove(index)}
+                                                            >
+                                                                Remove
+                                                            </button>
+                                                        )}
+                                                    </div>
+                                                )
+                                            )}
+
+                                            <button
+                                                type="button"
+                                                className="btn btn-outline-primary btn-sm"
+                                                onClick={() => push('')}
+                                            >
+                                                Add Repository
+                                            </button>
+                                        </>
+                                    )}
+                                </FieldArray>
+                                {submitCount > 0 && errors.repository_links && (
                                     <div className="text-danger small mt-1">
-                                        <ErrorMessage name="repository_link" />
+                                        {Array.isArray(errors.repository_links)
+                                            ? 'At least one repository link is required'
+                                            : errors.repository_links}
                                     </div>
+                                )}
                                 </div>
 
                                 <div className="mb-3">
@@ -158,7 +233,7 @@ const ProjectCreate = () => {
                                     />
 
                                     <div className="form-text">
-                                        Optional: upload PDF, DOC, DOCX, or ZIP file.
+                                        Accepted Formats: PDF, DOC or DOCX files. Max size: 10MB.
                                     </div>
 
                                     <div className="text-danger small mt-1">
@@ -168,19 +243,20 @@ const ProjectCreate = () => {
 
                                 <div className="mb-4">
                                     <label className="form-label">
-                                        Teacher ID
+                                        Assign Teacher <span className="text-danger">*</span>
                                     </label>
 
-                                    <Field
-                                        type="number"
-                                        name="teacher_id"
-                                        className="form-control"
-                                        placeholder="Enter teacher ID if assigned"
+                                    <Select
+                                        options={teachers}
+                                        placeholder="Search teacher..."
+                                        isClearable
+                                        onChange={(selectedOption) => {
+                                            setFieldValue(
+                                                'teacher_id',
+                                                selectedOption ? selectedOption.value : ''
+                                            );
+                                        }}
                                     />
-
-                                    <div className="form-text">
-                                        Optional. Leave empty if no teacher is assigned yet.
-                                    </div>
 
                                     <div className="text-danger small mt-1">
                                         <ErrorMessage name="teacher_id" />

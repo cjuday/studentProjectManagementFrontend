@@ -15,7 +15,9 @@
     "formik": "^2.4.9",
     "react": "^19.2.5",
     "react-dom": "^19.2.5",
+    "react-quill-new": "^3.8.3",
     "react-router-dom": "^7.15.0",
+    "react-select": "^5.10.2",
     "yup": "^1.7.1"
   },
   "devDependencies": {

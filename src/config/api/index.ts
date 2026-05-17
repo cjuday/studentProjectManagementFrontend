@@ -1,5 +1,6 @@
 export const API_CONFIG = {
     baseURL: 'http://localhost:8000/api',
+    storageUrl: 'http://localhost:8000/storage',
 
     AUTH: {
         REGISTER: '/auth/register',
@@ -15,5 +16,9 @@ export const API_CONFIG = {
         UPDATE: (id: number | string) => `/projects/${id}`,
         DELETE: (id: number | string) => `/projects/${id}`,
         UPDATE_STATUS: (id: number | string) => `/projects/${id}/status`,
+    },
+
+    USERS: {
+        TEACHERS: '/teachers',
     },
 };
