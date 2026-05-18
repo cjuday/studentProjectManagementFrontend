@@ -18,8 +18,6 @@ const ProjectList = () => {
     const [message, setMessage] = useState(successMessage || '');
     const [feedbackHistory, setFeedbackHistory] = useState<any[]>([]);
     const [feedbackLoading, setFeedbackLoading] = useState(false);
-    const [feedbackMessage, setFeedbackMessage] = useState('');
-    const [selectedStatus, setSelectedStatus] = useState('');
 
     const getPageTitle = () => {
         if (user?.role === 1) return 'My Submitted Projects';
