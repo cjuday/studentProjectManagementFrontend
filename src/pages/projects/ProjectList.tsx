@@ -2,6 +2,8 @@ import { useEffect, useState } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { AxiosInstance } from '../../config/api/axios';
 import { API_CONFIG } from '../../config/api';
+import { Formik, Form, Field, ErrorMessage } from 'formik';
+import { reviewInitialValues, reviewValidationSchema } from './formik';
 
 const ProjectList = () => {
     const navigate = useNavigate();
@@ -14,6 +16,10 @@ const ProjectList = () => {
     const [selectedProject, setSelectedProject] = useState<any>(null);
     const [deletingProjectId, setDeletingProjectId] = useState<number | null>(null);
     const [message, setMessage] = useState(successMessage || '');
+    const [feedbackHistory, setFeedbackHistory] = useState<any[]>([]);
+    const [feedbackLoading, setFeedbackLoading] = useState(false);
+    const [feedbackMessage, setFeedbackMessage] = useState('');
+    const [selectedStatus, setSelectedStatus] = useState('');
 
     const getPageTitle = () => {
         if (user?.role === 1) return 'My Submitted Projects';
@@ -45,15 +51,39 @@ const ProjectList = () => {
     }, []);
 
     const getStatusBadge = (status: number) => {
-        const statuses: Record<number, string> = {
-            0: 'Pending',
-            1: 'Under Review',
-            2: 'Need Changes',
-            3: 'Approved',
-            4: 'Rejected',
+        const statuses: Record<number, { label: string; className: string }> = {
+            0: {
+                label: 'Pending',
+                className: 'bg-secondary',
+            },
+            1: {
+                label: 'Under Review',
+                className: 'bg-primary',
+            },
+            2: {
+                label: 'Need Changes',
+                className: 'bg-warning text-dark',
+            },
+            3: {
+                label: 'Approved',
+                className: 'bg-success',
+            },
+            4: {
+                label: 'Rejected',
+                className: 'bg-danger',
+            },
         };
 
-        return <span className="badge bg-secondary">{statuses[status] || 'Unknown'}</span>;
+        const currentStatus = statuses[status] || {
+            label: 'Unknown',
+            className: 'bg-dark',
+        };
+
+        return (
+            <span className={`badge ${currentStatus.className}`}>
+                {currentStatus.label}
+            </span>
+        );
     };
 
     const handleDelete = async (projectId: number) => {
@@ -72,6 +102,47 @@ const ProjectList = () => {
             alert(error?.response?.data?.message || 'Failed to delete project.');
         } finally {
             setDeletingProjectId(null);
+        }
+    };
+
+    const handleStartReview = async (projectId: number) => {
+        const confirmed = window.confirm(
+            'Are you sure you want to start reviewing this project?'
+        );
+
+        if (!confirmed) return;
+
+        try {
+            await AxiosInstance.put(
+                API_CONFIG.PROJECTS.UPDATE_STATUS(projectId),
+                {
+                    status: 1,
+                }
+            );
+
+            setMessage('Project review started successfully.');
+            fetchProjects();
+        } catch (error: any) {
+            alert(
+                error?.response?.data?.message ||
+                'Failed to start review.'
+            );
+        }
+    };
+
+    const fetchFeedbackHistory = async (projectId: number) => {
+        try {
+            setFeedbackLoading(true);
+
+            const response = await AxiosInstance.get(
+                API_CONFIG.FEEDBACK.LIST(projectId)
+            );
+
+            setFeedbackHistory(response.data.data || []);
+        } catch (error) {
+            console.error('Failed to fetch feedback history:', error);
+        } finally {
+            setFeedbackLoading(false);
         }
     };
 
@@ -111,6 +182,7 @@ const ProjectList = () => {
                                     <tr>
                                         <th>Project Title</th>
                                         <th>Submitted To</th>
+                                        {user?.role === 3 && <th>Submitted By</th>}
                                         <th>Current Status</th>
                                         <th className="text-center">Actions</th>
                                     </tr>
@@ -127,18 +199,37 @@ const ProjectList = () => {
                                                 {project.teacher?.name || 'Not Assigned'}
                                             </td>
 
+                                            {user?.role === 3 && (
+                                                <td>
+                                                    {project.student?.name || 'Unknown'}
+                                                </td>
+                                            )}
+
                                             <td>
                                                 {getStatusBadge(project.status)}
                                             </td>
 
                                             <td className="text-center">
-                                                <button
-                                                    type="button"
-                                                    className="btn btn-sm btn-outline-primary me-2"
-                                                    onClick={() => setSelectedProject(project)}
-                                                >
-                                                    Details
-                                                </button>
+                                                {(user?.role === 2 || user?.role === 3) && project.status === 0 ? (
+                                                    <button
+                                                        type="button"
+                                                        className="btn btn-sm btn-warning"
+                                                        onClick={() => handleStartReview(project.id)}
+                                                    >
+                                                        Start Review
+                                                    </button>
+                                                ) : (
+                                                    <button
+                                                        type="button"
+                                                        className="btn btn-sm btn-outline-primary me-2"
+                                                        onClick={() => {
+                                                            setSelectedProject(project);
+                                                            fetchFeedbackHistory(project.id);
+                                                        }}
+                                                    >
+                                                        Details
+                                                    </button>
+                                                )}
 
                                                 {user?.role === 1 && project.status === 0 && (
                                                     <button
@@ -188,14 +279,26 @@ const ProjectList = () => {
                                         <b>:</b> {selectedProject.title}
                                     </div>
                                 </div>
-                                <div className="row mt-2">
-                                    <div className="col-4">
-                                        <strong>Teacher</strong>
+                                {(user?.role === 1 || user?.role === 3) && (
+                                    <div className="row mt-2">
+                                        <div className="col-4">
+                                            <strong>Submitted To</strong>
+                                        </div>
+                                        <div className="col-8">
+                                            <b>:</b> {selectedProject.teacher?.name || 'Not Assigned'}
+                                        </div>
                                     </div>
-                                    <div className="col-8">
-                                        <b>:</b> {selectedProject.teacher?.name || 'Not Assigned'}
+                                )}
+                                {(user?.role === 2 || user?.role === 3) && (
+                                    <div className="row mt-2">
+                                        <div className="col-4">
+                                            <strong>Submitted By</strong>
+                                        </div>
+                                        <div className="col-8">
+                                            <b>:</b> {selectedProject.student?.name || 'Unknown'}
+                                        </div>
                                     </div>
-                                </div>
+                                )}
                                 <div className="row mt-2">
                                     <div className="col-4">
                                         <strong>Status</strong>
@@ -303,6 +406,129 @@ const ProjectList = () => {
                                                 View / Download
                                             </a>
                                         </div>
+                                    </div>
+                                )}
+
+                                {selectedProject?.status !== 0 ? (
+                                    <>
+                                        <h5 className="fw-bold mt-4 mb-3">Feedback History</h5>
+                                        {feedbackLoading ? (
+                                            <p className="text-muted">Loading feedback...</p>
+                                        ) : feedbackHistory.length === 0 ? (
+                                            <p className="text-muted">No feedback found.</p>
+                                        ) : (
+                                            <div className="list-group">
+                                                {feedbackHistory.map((feedback) => (
+                                                    <div
+                                                        key={feedback.id}
+                                                        className="list-group-item border rounded mb-2"
+                                                    >
+                                                        <div className="d-flex justify-content-between">
+                                                            <strong>{feedback.user?.name || 'Unknown User'}</strong>
+                                                            <div>
+                                                                {getStatusBadge(feedback.status)}
+                                                            </div>
+
+                                                            <small className="text-muted">
+                                                                {new Date(feedback.created_at).toLocaleString('en-US', {
+                                                                    hour: '2-digit',
+                                                                    minute: '2-digit',
+                                                                    hour12: true,
+                                                                    day: '2-digit',
+                                                                    month: 'long',
+                                                                    year: 'numeric',
+                                                                })}
+                                                            </small>
+                                                        </div>
+
+                                                        <p className="mb-0 mt-2">
+                                                            <b>Remarks : </b>{feedback.message}
+                                                        </p>
+                                                    </div>
+                                                ))}
+                                            </div>
+                                        )}
+                                    </>
+                                ) : null}
+
+                                {(user?.role === 2 || user?.role === 3) && (selectedProject?.status === 1 || selectedProject?.status === 2) && (
+                                    <div className="mt-4 border rounded p-3 bg-light">
+                                        <h5 className="fw-bold mb-3">Submit Review</h5>
+
+                                        <Formik
+                                            initialValues={reviewInitialValues}
+                                            validationSchema={reviewValidationSchema}
+                                            onSubmit={async (values, { setSubmitting, resetForm }) => {
+                                                try {
+                                                    await AxiosInstance.post(
+                                                        API_CONFIG.FEEDBACK.STORE(selectedProject.id),
+                                                        {
+                                                            message: values.message || 'No remarks provided.',
+                                                            status: Number(values.status),
+                                                        }
+                                                    );
+
+                                                    await AxiosInstance.put(
+                                                        API_CONFIG.PROJECTS.UPDATE_STATUS(selectedProject.id),
+                                                        { status: Number(values.status) }
+                                                    );
+
+                                                    setMessage('Review submitted successfully.');
+                                                    resetForm();
+                                                    setSelectedProject(null);
+                                                    fetchProjects();
+                                                } catch (error: any) {
+                                                    alert(error?.response?.data?.message || 'Failed to submit review.');
+                                                } finally {
+                                                    setSubmitting(false);
+                                                }
+                                            }}
+                                        >
+                                            {({ isSubmitting }) => (
+                                                <Form>
+                                                    <div className="mb-3">
+                                                        <label className="form-label">Update Status</label>
+
+                                                        <Field as="select" name="status" className="form-select">
+                                                            <option value="">Select status</option>
+                                                            <option value="2">Changes Requested</option>
+                                                            <option value="3">Approved</option>
+                                                            <option value="4">Rejected</option>
+                                                        </Field>
+
+                                                        <div className="text-danger small mt-1">
+                                                            <ErrorMessage name="status" />
+                                                        </div>
+                                                    </div>
+
+                                                    <div className="mb-3">
+                                                        <label className="form-label">
+                                                            Remarks
+                                                        </label>
+
+                                                        <Field
+                                                            as="textarea"
+                                                            name="message"
+                                                            rows={4}
+                                                            className="form-control"
+                                                            placeholder="Write remarks for the student"
+                                                        />
+
+                                                        <div className="text-danger small mt-1">
+                                                            <ErrorMessage name="message" />
+                                                        </div>
+                                                    </div>
+
+                                                    <button
+                                                        type="submit"
+                                                        className="btn btn-primary"
+                                                        disabled={isSubmitting}
+                                                    >
+                                                        {isSubmitting ? 'Submitting...' : 'Submit Review'}
+                                                    </button>
+                                                </Form>
+                                            )}
+                                        </Formik>
                                     </div>
                                 )}
                             </div>

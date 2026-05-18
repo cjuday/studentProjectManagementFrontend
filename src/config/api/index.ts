@@ -21,4 +21,9 @@ export const API_CONFIG = {
     USERS: {
         TEACHERS: '/teachers',
     },
+
+    FEEDBACK: {
+        LIST: (projectId: number | string) => `/projects/${projectId}/feedback`,
+        STORE: (projectId: number | string) => `/projects/${projectId}/feedback`,
+    }
 };

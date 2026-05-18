@@ -53,3 +53,18 @@ export const projectValidationSchema = Yup.object({
                     ),
     teacher_id: Yup.string().required('Teacher is required'),
 });
+
+export const reviewInitialValues = {
+    status: '',
+    message: '',
+};
+
+export const reviewValidationSchema = Yup.object({
+    status: Yup.string().required('Status is required'),
+
+    message: Yup.string().when('status', {
+        is: (status: string) => status !== '3',
+        then: (schema) => schema.required('Remarks is required'),
+        otherwise: (schema) => schema.nullable(),
+    }),
+});
