@@ -4,6 +4,7 @@ import DefaultLayout from './layouts/DefaultLayout';
 import Dashboard from './pages/dashboard/Dashboard';
 import ProjectList from './pages/projects/ProjectList';
 import ProjectCreate from './pages/projects/ProjectCreate';
+import ProjectEdit from './pages/projects/ProjectEdit';
 
 function App() {
     return (
@@ -15,6 +16,7 @@ function App() {
                     <Route path="/dashboard" element={<Dashboard />} />
                     <Route path="/projects" element={<ProjectList />} />
                     <Route path="/projects/create" element={<ProjectCreate />} />
+                    <Route path="/projects/:id/edit" element={<ProjectEdit />} />
                 </Route>
             </Routes>
         </BrowserRouter>

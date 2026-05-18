@@ -4,6 +4,7 @@ import { AxiosInstance } from '../../config/api/axios';
 import { API_CONFIG } from '../../config/api';
 import { Formik, Form, Field, ErrorMessage } from 'formik';
 import { reviewInitialValues, reviewValidationSchema } from './formik';
+import DOMPurify from 'dompurify';
 
 const ProjectList = () => {
     const navigate = useNavigate();
@@ -12,12 +13,16 @@ const ProjectList = () => {
     const successMessage = location.state?.successMessage;
 
     const [projects, setProjects] = useState<any[]>([]);
+    const [currentPage, setCurrentPage] = useState(1);
+    const [lastPage, setLastPage] = useState(1);
     const [loading, setLoading] = useState(false);
     const [selectedProject, setSelectedProject] = useState<any>(null);
     const [deletingProjectId, setDeletingProjectId] = useState<number | null>(null);
     const [message, setMessage] = useState(successMessage || '');
     const [feedbackHistory, setFeedbackHistory] = useState<any[]>([]);
     const [feedbackLoading, setFeedbackLoading] = useState(false);
+    const [search, setSearch] = useState('');
+    const [statusFilter, setStatusFilter] = useState('');
 
     const getPageTitle = () => {
         if (user?.role === 1) return 'My Submitted Projects';
@@ -26,13 +31,17 @@ const ProjectList = () => {
         return 'Projects';
     };
 
-    const fetchProjects = async () => {
+    const fetchProjects = async (page = 1) => {
         try {
             setLoading(true);
-            const response = await AxiosInstance.get(API_CONFIG.PROJECTS.LIST);
-            setProjects(response.data.data || []);
-        } catch (error) {
-            console.error('Failed to fetch projects:', error);
+
+            const response = await AxiosInstance.get(
+                `${API_CONFIG.PROJECTS.LIST}?page=${page}&search=${search}&status=${statusFilter}`
+            );
+
+            setProjects(response.data.data.data || []);
+            setCurrentPage(response.data.data.current_page);
+            setLastPage(response.data.data.last_page);
         } finally {
             setLoading(false);
         }
@@ -168,6 +177,43 @@ const ProjectList = () => {
                 </div>
             )}
             <div className="card border-0 shadow-sm rounded-4">
+                <div className="container-fluid mt-3">
+                    <div className="row mb-3">
+                        <div className="col-md-6">
+                            <input
+                                type="text"
+                                className="form-control"
+                                placeholder="Search by project, student or teacher"
+                                value={search}
+                                onChange={(e) => setSearch(e.target.value)}
+                            />
+                        </div>
+
+                        <div className="col-md-4">
+                            <select
+                                className="form-select"
+                                value={statusFilter}
+                                onChange={(e) => setStatusFilter(e.target.value)}
+                            >
+                                <option value="">All Status</option>
+                                <option value="0">Pending</option>
+                                <option value="1">Under Review</option>
+                                <option value="2">Need Changes</option>
+                                <option value="3">Approved</option>
+                                <option value="4">Rejected</option>
+                            </select>
+                        </div>
+
+                        <div className="col-md-2">
+                            <button
+                                className="btn btn-primary w-100"
+                                onClick={() => fetchProjects(1)}
+                            >
+                                Filter
+                            </button>
+                        </div>
+                    </div>
+                </div>
                 <div className="card-body">
                     {loading ? (
                         <p className="text-muted mb-0">Loading projects...</p>
@@ -229,6 +275,15 @@ const ProjectList = () => {
                                                     </button>
                                                 )}
 
+                                                {user?.role === 1 && project.status === 2 && (
+                                                    <Link
+                                                        to={`/projects/${project.id}/edit`}
+                                                        className="btn btn-sm btn-outline-warning me-2"
+                                                    >
+                                                        Edit
+                                                    </Link>
+                                                )}
+
                                                 {user?.role === 1 && project.status === 0 && (
                                                     <button
                                                         type="button"
@@ -244,6 +299,31 @@ const ProjectList = () => {
                                     ))}
                                 </tbody>
                             </table>
+                        </div>
+                    )}
+                </div>
+                <div className="container my-2">
+                    {lastPage > 1 && (
+                        <div className="d-flex justify-content-end mt-3">
+                            <button
+                                className="btn btn-sm btn-outline-primary me-2"
+                                disabled={currentPage === 1}
+                                onClick={() => fetchProjects(currentPage - 1)}
+                            >
+                                Previous
+                            </button>
+
+                            <span className="align-self-center">
+                                Page {currentPage} of {lastPage}
+                            </span>
+
+                            <button
+                                className="btn btn-sm btn-outline-primary ms-2"
+                                disabled={currentPage === lastPage}
+                                onClick={() => fetchProjects(currentPage + 1)}
+                            >
+                                Next
+                            </button>
                         </div>
                     )}
                 </div>
@@ -337,7 +417,7 @@ const ProjectList = () => {
                                 <div className="row mt-2 border rounded mx-1 p-3" style={{ backgroundColor: '#f8f9fa' }}>
                                     <div
                                         dangerouslySetInnerHTML={{
-                                            __html: selectedProject.description,
+                                            __html: DOMPurify.sanitize(selectedProject.description)
                                         }}
                                     />
                                 </div>

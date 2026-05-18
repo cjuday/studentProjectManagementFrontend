@@ -7,6 +7,7 @@ export const projectInitialValues = {
     demo_link: '',
     file_path: null as File | null,
     teacher_id: '',
+    existing_file_path: '',
 };
 
 const stripHtml = (value: string) => {

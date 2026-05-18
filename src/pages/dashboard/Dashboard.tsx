@@ -12,9 +12,9 @@ const Dashboard = () => {
         try {
             setLoading(true);
 
-            const response = await AxiosInstance.get(API_CONFIG.PROJECTS.LIST);
+            const response = await AxiosInstance.get(`${API_CONFIG.PROJECTS.LIST}?per_page=1000`);
 
-            setProjects(response.data.data || []);
+            setProjects(response.data.data.data || []);
         } catch (error) {
             console.error('Failed to fetch dashboard data:', error);
         } finally {
