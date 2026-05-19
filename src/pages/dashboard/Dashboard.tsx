@@ -1,6 +1,8 @@
 import { useEffect, useState } from 'react';
 import { AxiosInstance } from '../../config/api/axios';
 import { API_CONFIG } from '../../config/api';
+import { PROJECT_STATUS } from '../../constants/ProjectStatus';
+import { USER_ROLE } from '../../constants/userRole';
 
 const Dashboard = () => {
     const user = JSON.parse(localStorage.getItem('user') || '{}');
@@ -32,10 +34,11 @@ const Dashboard = () => {
 
     const stats = {
         submitted: projects.length,
-        underReview: getCountByStatus(1),
-        changesRequested: getCountByStatus(2),
-        approved: getCountByStatus(3),
-        rejected: getCountByStatus(4),
+        pending: getCountByStatus(PROJECT_STATUS.PENDING),
+        underReview: getCountByStatus(PROJECT_STATUS.UNDER_REVIEW),
+        changesRequested: getCountByStatus(PROJECT_STATUS.NEED_CHANGES),
+        approved: getCountByStatus(PROJECT_STATUS.APPROVED),
+        rejected: getCountByStatus(PROJECT_STATUS.REJECTED)
     };
 
     return (
@@ -60,12 +63,13 @@ const Dashboard = () => {
             ) : (
                 <>
                     <div className="row g-4">
-                        <StatCard title={user?.role === 1 ? "Submitted Projects" : user?.role === 2 ? "Projects Submitted To You" : "Submitted Projects"} value={stats.submitted} />
+                        <StatCard title={user?.role === USER_ROLE.STUDENT ? "Submitted Projects" : user?.role === USER_ROLE.TEACHER ? "Projects Submitted To You" : "All Submitted Projects"} value={stats.submitted} />
+                        <StatCard title="Pending For Review" value={stats.pending} />
                         <StatCard title="Under Review" value={stats.underReview} />
-                        <StatCard title="Changes Requested" value={stats.changesRequested} />
                     </div>
 
                     <div className="row g-4 mt-1">
+                        <StatCard title="Changes Requested" value={stats.changesRequested} />
                         <StatCard title="Approved Projects" value={stats.approved} />
                         <StatCard title="Rejected Projects" value={stats.rejected} />
                     </div>
